@@ -63,8 +63,14 @@ export class EmpleadosService {
       }
     }
 
-    if (!mejorCoincidencia) throw new NotFoundException('No reconocido');
-    return { nombre: mejorCoincidencia.nombre_completo, puesto: mejorCoincidencia.puesto };
+   if (!mejorCoincidencia) throw new NotFoundException('No reconocido');
+  
+  // Retornamos todos los datos necesarios
+  return { 
+    nombre: mejorCoincidencia.nombre_completo, 
+    puesto: mejorCoincidencia.puesto,
+    curp: mejorCoincidencia.curp 
+  };
   }
 
   async findAll() { return await this.empleadoRepository.find(); }
