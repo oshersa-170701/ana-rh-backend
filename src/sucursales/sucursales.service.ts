@@ -20,13 +20,24 @@ export class SucursalesService {
     });
     return await this.sucursalRepository.save(nuevaSucursal);
   }
-
-  async findAll() {
-    return await this.sucursalRepository.find();
+async findAll() {
+    // ✨ Cambiado de ['empresa'] a un objeto con tipado seguro
+    return await this.sucursalRepository.find({
+      relations: {
+        empresa: true
+      }
+    });
   }
 
   async findOne(id: string) {
-    const sucursal = await this.sucursalRepository.findOneBy({ id });
+    // ✨ Cambiado también aquí para cumplir con el tipado estricto
+    const sucursal = await this.sucursalRepository.findOne({
+      where: { id },
+      relations: {
+        empresa: true
+      }
+    });
+    
     if (!sucursal) {
       throw new NotFoundException(`La sucursal con ID ${id} no fue encontrada`);
     }

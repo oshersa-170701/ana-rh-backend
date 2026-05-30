@@ -25,7 +25,7 @@ async create(@Body() body: any, @UploadedFile() foto: Express.Multer.File) {
   // Ya no necesitas calcular el descriptor aquí, el Service lo hará
   return this.empleadosService.create(body, foto);
 }
-
+@Get()
   findAll() {
     return this.empleadosService.findAll();
   }
@@ -36,11 +36,17 @@ async create(@Body() body: any, @UploadedFile() foto: Express.Multer.File) {
   }
 
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('foto')) // 👈 Agregamos el interceptor para capturar la nueva foto si es que viene
   update(
     @Param('id') id: string,
     @Body() updateEmpleadoDto: UpdateEmpleadoDto,
+    @UploadedFile() foto?: Express.Multer.File // 👈 Opcional usando el operador "?"
   ) {
-    return this.empleadosService.update(id, updateEmpleadoDto);
+    // Si viene una foto nueva, se la inyectamos al DTO antes de mandarlo al servicio
+    if (foto) {
+      updateEmpleadoDto.foto_perfil_url = undefined; // Le indicamos al servicio que guarde la nueva imagen
+    }
+    return this.empleadosService.update(id, { ...updateEmpleadoDto, nuevaFotoArchivo: foto });
   }
 
   @Delete(':id')

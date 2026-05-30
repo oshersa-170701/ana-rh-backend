@@ -46,6 +46,14 @@ export class Empleado {
   @Column({ type: 'boolean', default: true })
   estatus!: boolean;
 
+  // ✨ NUEVA COLUMNA: Identificador único opcional para empleados autorizados
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  user!: string | null;
+
+  // ✨ NUEVA COLUMNA: Hash de contraseña con espacio seguro para bcrypt
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  password_hash!: string | null;
+
   @CreateDateColumn({ type: 'timestamp' })
   created_at!: Date;
 

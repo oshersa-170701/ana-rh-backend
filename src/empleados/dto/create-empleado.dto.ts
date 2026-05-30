@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsOptional, IsString, IsNotEmpty, Length, IsNumber } from "class-validator";
+import { IsOptional, IsString, IsNotEmpty, Length, IsNumber, IsBoolean } from "class-validator";
 import { Transform } from 'class-transformer';
 export class CreateEmpleadoDto {
   // Hacemos ambos opcionales y permitimos que sean strings o nulos
@@ -19,7 +19,9 @@ export class CreateEmpleadoDto {
   @IsNotEmpty()
   curp!: string;
 
-  @Transform((params) => (params.value === '' || params.value === null ? undefined : params.value))
+  @Transform((params) =>
+    params.value === '' || params.value === null ? undefined : params.value,
+  )
   @IsString()
   @Length(11, 11, { message: 'El NSS debe tener exactamente 11 caracteres' })
   @IsOptional()
@@ -40,4 +42,24 @@ export class CreateEmpleadoDto {
 
   @IsOptional()
   face_embedding?: any;
+
+  // ✨ NUEVO CAMPO: Solo requerido cuando lo crea el Superadmin (Mínimo 4 letras)
+  @Transform((params) => (params.value === '' || params.value === null ? undefined : params.value))
+  @IsString()
+  @Length(4, 100, { message: 'El usuario debe tener al menos 4 caracteres' })
+  @IsOptional()
+  user?: string;
+
+  // ✨ NUEVO CAMPO: Solo requerido cuando lo crea el Superadmin (Mínimo 6 letras)
+  @Transform((params) => (params.value === '' || params.value === null ? undefined : params.value))
+  @IsString()
+  @Length(6, 255, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @IsOptional()
+  password_hash?: string;
+
+  // ✨ NUEVO CAMPO DECLARADO: Permite que pasen los filtros de validación 400
+  @IsOptional()
+  @IsBoolean({ message: 'El estatus debe ser un valor booleano' })
+  @Transform(({ value }) => value === 'true' || value === true) // Asegura el casteo correcto si viene de FormData
+  estatus?: boolean;
 }
