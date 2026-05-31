@@ -54,4 +54,16 @@ async findAll() {
     const sucursal = await this.findOne(id);
     return await this.sucursalRepository.remove(sucursal);
   }
+  // ✨ NUEVO MÉTODO: Query directa a MySQL filtrando por la empresa activa
+  async findByTenant(tenantId: string) {
+    return await this.sucursalRepository.find({
+      where: { 
+        // Ajusta 'tenant_id' si en tu entidad se llama de otra forma (ej. tenant: { id: tenantId })
+        tenant_id: tenantId 
+      },
+      relations: {
+        empresa: true
+      }
+    });
+  }
 }

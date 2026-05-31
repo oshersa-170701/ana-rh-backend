@@ -36,17 +36,19 @@ async create(@Body() body: any, @UploadedFile() foto: Express.Multer.File) {
   }
 
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('foto')) // 👈 Agregamos el interceptor para capturar la nueva foto si es que viene
-  update(
+  @UseInterceptors(FileInterceptor('foto')) // 👈 Atrapa el archivo binario 'foto' del FormData
+  async update(
     @Param('id') id: string,
-    @Body() updateEmpleadoDto: UpdateEmpleadoDto,
-    @UploadedFile() foto?: Express.Multer.File // 👈 Opcional usando el operador "?"
+    @Body() body: any, // 👈 Cambiamos a 'any' temporalmente para recibir el body crudo del FormData sin que class-validator tumbe el archivo
+    @UploadedFile() foto?: Express.Multer.File
   ) {
-    // Si viene una foto nueva, se la inyectamos al DTO antes de mandarlo al servicio
+    // Si el supervisor subió una foto nueva, se la inyectamos directamente al body para que el servicio la procese
     if (foto) {
-      updateEmpleadoDto.foto_perfil_url = undefined; // Le indicamos al servicio que guarde la nueva imagen
+      body.nuevaFotoArchivo = foto;
     }
-    return this.empleadosService.update(id, { ...updateEmpleadoDto, nuevaFotoArchivo: foto });
+
+    // Despachamos el cuerpo limpio y sanitizado directamente hacia el servicio de TypeORM
+    return this.empleadosService.update(id, body);
   }
 
   @Delete(':id')
@@ -56,5 +58,10 @@ async create(@Body() body: any, @UploadedFile() foto: Express.Multer.File) {
   @Post('reconocer')
   async reconocer(@Body() body: { descriptor: number[] }) {
     return this.empleadosService.reconocerRostro(body.descriptor);
+  }
+  // ✨ NUEVO ENDPOINT: Login exclusivo para empleados administradores
+  @Post('login')
+  async login(@Body() body: { user: string; password_hash: string }) {
+    return this.empleadosService.loginEmpleado(body.user, body.password_hash);
   }
 }

@@ -54,24 +54,46 @@ export class EmpleadosService {
 
     const datosActualizados = { ...dto };
 
-    // ✨ PROCESAR FOTO NUEVA SI SE SUBIÓ EN LA EDICIÓN:
+    // 1. 📸 PROCESAR FOTO NUEVA SI SE SUBIÓ EN LA EDICIÓN:
     if (datosActualizados.nuevaFotoArchivo) {
       const nuevaRutaFoto = await this.guardarFoto(datosActualizados.nuevaFotoArchivo);
       empleado.foto_perfil_url = nuevaRutaFoto;
       delete datosActualizados.nuevaFotoArchivo;
     }
 
-    if (datosActualizados.user !== undefined) {
-      datosActualizados.user = datosActualizados.user && datosActualizados.user.trim() !== '' ? datosActualizados.user.trim() : null;
+    // 2. 🛡️ VALIDADOR SEGURO PARA EL USUARIO (Evita que rompa el .trim())
+    if (datosActualizados.user !== undefined && datosActualizados.user !== null) {
+      const userStr = String(datosActualizados.user).trim();
+      datosActualizados.user = (userStr !== '' && userStr !== 'undefined') ? userStr : null;
+    } else {
+      delete datosActualizados.user; // Si no viene, no lo tocamos en la BD
     }
 
-    if (datosActualizados.password_hash && datosActualizados.password_hash.trim() !== '') {
-      const salt = await bcrypt.genSalt(10);
-      datosActualizados.password_hash = await bcrypt.hash(datosActualizados.password_hash, salt);
-    } else if (datosActualizados.password_hash === '') {
-      datosActualizados.password_hash = null;
+    // 3. 🔑 VALIDADOR SEGURO PARA LA CONTRASEÑA
+    if (datosActualizados.password_hash !== undefined && datosActualizados.password_hash !== null) {
+      const passStr = String(datosActualizados.password_hash).trim();
+      
+      if (passStr !== '' && passStr !== 'undefined') {
+        const salt = await bcrypt.genSalt(10);
+        datosActualizados.password_hash = await bcrypt.hash(passStr, salt);
+      } else {
+        delete datosActualizados.password_hash;
+      }
+    } else {
+      delete datosActualizados.password_hash;
     }
 
+    // 4. 🏢 EVITAR ATRIBUTOS DESCOMPUESTOS EN LAS LLAVES FORÁNEAS (Evita que guarde "PRUEBA 1")
+    if (datosActualizados.tenant_id) {
+      const tenantStr = String(datosActualizados.tenant_id).trim();
+      if (tenantStr === '' || tenantStr === 'undefined') delete datosActualizados.tenant_id;
+    }
+    if (datosActualizados.sucursal_id) {
+      const sucursalStr = String(datosActualizados.sucursal_id).trim();
+      if (sucursalStr === '' || sucursalStr === 'undefined') delete datosActualizados.sucursal_id;
+    }
+
+    // 5. Acoplamos los cambios sanitizados sobre la entidad original de TypeORM
     Object.assign(empleado, datosActualizados);
     return await this.empleadoRepository.save(empleado);
   }
@@ -156,5 +178,41 @@ export class EmpleadosService {
 
     // 3. Una vez limpio el almacenamiento local, procedemos a borrar el registro de MySQL
     return await this.empleadoRepository.delete(id); 
+  }
+async loginEmpleado(user: string, passwordPlana: string) {
+    // 1. Buscamos al empleado por su usuario único
+    const empleado = await this.empleadoRepository.findOne({
+      where: { user },
+      relations: { sucursal: true, empresa: true }
+    });
+
+    // 2. Si no existe o está Inactivo, denegamos el acceso
+    if (!empleado || !empleado.estatus) {
+      throw new NotFoundException('Credenciales incorrectas o usuario inactivo');
+    }
+
+    // ✨ CORRECCIÓN: Validamos que tenga un password_hash real antes de usar bcrypt
+    if (!empleado.password_hash) {
+      throw new NotFoundException('Este usuario no cuenta con credenciales de acceso');
+    }
+
+    // 3. Ahora TypeScript sabe con 100% de certeza que es un string y no fallará
+    const passwordValida = await bcrypt.compare(passwordPlana, empleado.password_hash);
+    if (!passwordValida) {
+      throw new NotFoundException('Credenciales incorrectas');
+    }
+
+    // 4. Retornamos los datos para armar la sesión en el cliente
+  return {
+      id: empleado.id,
+      nombre_completo: empleado.nombre_completo,
+      puesto: empleado.puesto,
+      tenant_id: empleado.tenant_id,
+      sucursal_id: empleado.sucursal_id,
+      // ✨ NUEVO: Extraemos los nombres de las relaciones cargadas por TypeORM
+      empresa_nombre: empleado.empresa ? empleado.empresa.nombre : 'Empresa Principal',
+      sucursal_nombre: empleado.sucursal ? empleado.sucursal.nombre : 'Sucursal Base',
+      token: `empleado-session-token-${empleado.id}`
+    };
   }
 }

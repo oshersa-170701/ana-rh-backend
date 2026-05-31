@@ -34,4 +34,9 @@ export class SucursalesController {
   remove(@Param('id') id: string) {
     return this.sucursalesService.remove(id);
   }
+  // ✨ NUEVO ENDPOINT: Filtra y expone las sucursales por Tenant (Empresa)
+  @Get('tenant/:tenantId')
+  findByTenant(@Param('tenantId') tenantId: string) {
+    return this.sucursalesService.findByTenant(tenantId);
+  }
 }
