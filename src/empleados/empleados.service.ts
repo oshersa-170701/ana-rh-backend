@@ -48,31 +48,29 @@ export class EmpleadosService {
     return await this.empleadoRepository.save(nuevoEmpleado);
   }
 
-  async update(id: string, dto: any) {
+ async update(id: string, dto: any) {
     const empleado = await this.empleadoRepository.findOneBy({ id });
     if (!empleado) throw new NotFoundException('Empleado no encontrado');
 
     const datosActualizados = { ...dto };
 
-    // 1. 📸 PROCESAR FOTO NUEVA SI SE SUBIÓ EN LA EDICIÓN:
+    // 1. 📸 Procesar foto nueva si se subió
     if (datosActualizados.nuevaFotoArchivo) {
       const nuevaRutaFoto = await this.guardarFoto(datosActualizados.nuevaFotoArchivo);
       empleado.foto_perfil_url = nuevaRutaFoto;
       delete datosActualizados.nuevaFotoArchivo;
     }
 
-    // 2. 🛡️ VALIDADOR SEGURO PARA EL USUARIO (Evita que rompa el .trim())
+    // 2. 🛡️ Validadores seguros para campos opcionales del DTO
     if (datosActualizados.user !== undefined && datosActualizados.user !== null) {
       const userStr = String(datosActualizados.user).trim();
       datosActualizados.user = (userStr !== '' && userStr !== 'undefined') ? userStr : null;
     } else {
-      delete datosActualizados.user; // Si no viene, no lo tocamos en la BD
+      delete datosActualizados.user;
     }
 
-    // 3. 🔑 VALIDADOR SEGURO PARA LA CONTRASEÑA
     if (datosActualizados.password_hash !== undefined && datosActualizados.password_hash !== null) {
       const passStr = String(datosActualizados.password_hash).trim();
-      
       if (passStr !== '' && passStr !== 'undefined') {
         const salt = await bcrypt.genSalt(10);
         datosActualizados.password_hash = await bcrypt.hash(passStr, salt);
@@ -83,7 +81,15 @@ export class EmpleadosService {
       delete datosActualizados.password_hash;
     }
 
-    // 4. 🏢 EVITAR ATRIBUTOS DESCOMPUESTOS EN LAS LLAVES FORÁNEAS (Evita que guarde "PRUEBA 1")
+    // 🔥 3. EL PARCHE DE ORO PARA EL ESTATUS (Soluciona el error 500)
+    // Traduce la cadena de texto "true" o "false" de FormData a un booleano primitivo de JS
+    if (datosActualizados.estatus !== undefined && datosActualizados.estatus !== null) {
+      const estatusStr = String(datosActualizados.estatus).trim();
+      // Si es el string "true" o el número "1", la entidad recibe true, de lo contrario false
+      datosActualizados.estatus = (estatusStr === 'true' || estatusStr === '1');
+    }
+
+    // 4. Limpieza de llaves foráneas corruptas por strings vacíos
     if (datosActualizados.tenant_id) {
       const tenantStr = String(datosActualizados.tenant_id).trim();
       if (tenantStr === '' || tenantStr === 'undefined') delete datosActualizados.tenant_id;
@@ -93,8 +99,10 @@ export class EmpleadosService {
       if (sucursalStr === '' || sucursalStr === 'undefined') delete datosActualizados.sucursal_id;
     }
 
-    // 5. Acoplamos los cambios sanitizados sobre la entidad original de TypeORM
+    // 5. Acoplamos los cambios limpios y ordenados en la entidad original
     Object.assign(empleado, datosActualizados);
+    
+    // Al guardar un booleano real de JS (true/false), TypeORM escribe un 1 o 0 perfecto en MySQL
     return await this.empleadoRepository.save(empleado);
   }
 
@@ -113,10 +121,13 @@ export class EmpleadosService {
     });
 
     let mejorCoincidencia: Empleado | null = null;
-    let distanciaMinima = 0.6;
+    let distanciaMinima = 0.6; // Umbral estricto de face-api
 
     for (const empleado of empleados) {
-      const embedding = Array.isArray(empleado.face_embedding) ? empleado.face_embedding : JSON.parse(empleado.face_embedding);
+      const embedding = Array.isArray(empleado.face_embedding) 
+        ? empleado.face_embedding 
+        : JSON.parse(empleado.face_embedding);
+        
       const dist = Math.sqrt(descriptor.reduce((sum, val, i) => sum + Math.pow(val - embedding[i], 2), 0));
 
       if (dist < distanciaMinima) {
@@ -127,7 +138,10 @@ export class EmpleadosService {
 
     if (!mejorCoincidencia) throw new NotFoundException('No reconocido');
   
+    // ✨ CORRECCIÓN DE ORO: Enviamos el ID y tenant_id obligatorios para el Kiosco
     return { 
+      id: mejorCoincidencia.id,
+      tenant_id: mejorCoincidencia.tenant_id,
       nombre: mejorCoincidencia.nombre_completo, 
       puesto: mejorCoincidencia.puesto,
       curp: mejorCoincidencia.curp 

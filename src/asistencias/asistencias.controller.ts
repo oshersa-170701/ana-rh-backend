@@ -10,6 +10,7 @@ import {
 import { AsistenciasService } from './asistencias.service';
 import { CreateAsistenciaDto } from './dto/create-asistencia.dto';
 import { UpdateAsistenciaDto } from './dto/update-asistencia.dto';
+import { CheckAsistenciaDto } from './dto/check-asistencia.dto';
 
 @Controller('asistencias')
 export class AsistenciasController {
@@ -41,5 +42,12 @@ export class AsistenciasController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.asistenciasService.remove(id);
+  }
+  // 🤖 ✨ ENDPOINT DE ACCESO PARA EL KIOSCO BIOMÉTRICO
+  @Post('checar-ia')
+  registrarChecadaIA(@Body() checkAsistenciaDto: CheckAsistenciaDto) {
+    return this.asistenciasService.registrarChecadaAutomatica(
+      checkAsistenciaDto,
+    );
   }
 }
