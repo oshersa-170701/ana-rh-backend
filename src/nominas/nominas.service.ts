@@ -104,10 +104,11 @@ export class NominasService {
     });
   }
 
-  async findOne(id: string) {
+async findOne(id: string) {
     const nomina = await this.nominaRepository.findOne({
       where: { id },
       relations: {
+        empresa: true, // 🚀 ¡INYECCIÓN DE ORO BACKEND! Trae nombre comercial, logo, etc.
         detalles: {
           empleado: true 
         }

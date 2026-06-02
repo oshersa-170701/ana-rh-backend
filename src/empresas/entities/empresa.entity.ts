@@ -10,7 +10,10 @@ export class Empresa {
 
   @Column({ type: 'varchar', length: 13, unique: true })
   rfc!: string;
-
+  // 🚀 ¡COLUMNA DE ORO COMPLETADA! Agregamos el soporte para logos en MySQL
+// 🚀 ACTUALIZACIÓN DE CAPACIDAD: Cambiamos a longtext para almacenar el Base64 completo
+  @Column({ type: 'longtext', nullable: true })
+  logo_url!: string;
   @Column({ type: 'boolean', default: true })
   estatus!: boolean;
 
