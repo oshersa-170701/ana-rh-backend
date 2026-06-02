@@ -9,6 +9,7 @@ import { randomUUID } from 'crypto';
 
 import { CheckAsistenciaDto } from './dto/check-asistencia.dto';
 import { Empleado } from 'src/empleados/entities/empleado.entity';
+import { Incidencia } from 'src/incidencias/entities/incidencia.entity';
 
 @Injectable()
 export class AsistenciasService {
@@ -17,6 +18,8 @@ export class AsistenciasService {
     private readonly asistenciaRepository: Repository<Asistencia>,
     @InjectRepository(Empleado)
     private readonly empleadoRepository: Repository<Empleado>,
+    @InjectRepository(Incidencia) // 🔥 INYECCIÓN DE ORO
+    private readonly incidenciaRepository: Repository<Incidencia>,
   ) { }
 
   async registrarChecadaAutomatica(checkDto: CheckAsistenciaDto) {
@@ -128,5 +131,76 @@ export class AsistenciasService {
   async remove(id: string) {
     const asistencia = await this.findOne(id);
     return await this.asistenciaRepository.remove(asistencia);
+  }
+async findBySucursal(tenant_id: string, sucursal_id: string) {
+    // 1. Traemos las asistencias ordinarias de la sucursal
+    const asistencias = await this.asistenciaRepository.find({
+      where: {
+        tenant_id,
+        empleado: { sucursal_id } 
+      },
+      relations: {
+        empleado: true 
+      },
+      order: {
+        fecha: 'DESC',
+        hora: 'DESC'
+      }
+    });
+
+    // 🚀 2. ASIGNACIÓN REFORZADA CON ACUMULADOR DE HORAS EXTRA
+    const asistenciasConIncidencias = await Promise.all(
+      asistencias.map(async (asistencia) => {
+        const incidenciasDelDia = await this.incidenciaRepository.find({
+          where: {
+            empleado_id: asistencia.empleado_id,
+            fecha: asistencia.fecha
+          },
+          relations: {
+            aprobador: true
+          }
+        });
+
+        if (incidenciasDelDia.length === 0) {
+          return { ...asistencia, incidencia: null };
+        }
+
+        let incidenciaAsignada: any = null;
+
+        // 🧠 DISTRIBUCIÓN POR EVENTO LÓGICO CON FUSIÓN DE DATOS
+        if (asistencia.tipo_evento === TipoEvento.ENTRADA) {
+          incidenciaAsignada = incidenciasDelDia.find(i => i.tipo === 'FALTA' || i.tipo === 'RETARDO');
+        } 
+        else if (asistencia.tipo_evento === TipoEvento.INICIO_ALMUERZO) {
+          incidenciaAsignada = incidenciasDelDia.find(i => i.tipo === 'PERMISO' || i.tipo === 'VACACIONES');
+        } 
+        else if (asistencia.tipo_evento === TipoEvento.SALIDA) {
+          // 🔥 BLOQUE DE FUSIÓN: Filtramos TODAS las horas extra de este empleado hoy
+          const horasExtraDelDia = incidenciasDelDia.filter(i => i.tipo === 'HORA_EXTRA');
+
+          if (horasExtraDelDia.length > 0) {
+            // Sumamos las cantidades de horas de forma limpia (casteando a Number por el tipo decimal)
+            const totalHoras = horasExtraDelDia.reduce((sum, i) => sum + Number(i.cantidad_horas), 0);
+            
+            // Unimos las justificaciones de cada bloque para que no se pierda nada en la auditoría
+            const motivosUnidos = horasExtraDelDia.map((i, index) => `[Bloque ${index + 1}]: ${i.motivo}`).join(' | ');
+
+            // Estructuramos un único objeto combinado que mantenga los datos del aprobador
+            incidenciaAsignada = {
+              ...horasExtraDelDia[0], // Copia la estructura base (id, tipo, fecha, etc.)
+              cantidad_horas: totalHoras, // ⏱️ Horas acumuladas totales
+              motivo: motivosUnidos, // 📝 Justificaciones fusionadas
+            };
+          }
+        }
+
+        return {
+          ...asistencia,
+          incidencia: incidenciaAsignada || null
+        };
+      })
+    );
+
+    return asistenciasConIncidencias;
   }
 }

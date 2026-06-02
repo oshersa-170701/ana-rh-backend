@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsEnum, IsOptional, IsNumber, IsUUID, Matches } from 'class-validator';
-import { TipoIncidencia, EstatusIncidencia } from '../entities/incidencia.entity';
+import { IsNotEmpty, IsEnum, IsNumber, IsUUID, Matches, IsOptional, IsString, MinLength } from 'class-validator';
+import { TipoIncidencia } from '../entities/incidencia.entity';
 
 export class CreateIncidenciaDto {
   @IsUUID('4', { message: 'El tenant_id debe ser un UUID válido' })
@@ -21,12 +21,13 @@ export class CreateIncidenciaDto {
   @IsNumber({}, { message: 'La cantidad de horas debe ser un número' })
   @IsOptional()
   cantidad_horas?: number;
-
-  @IsEnum(EstatusIncidencia, { message: 'Estatus inválido' })
-  @IsOptional()
-  estatus?: EstatusIncidencia;
-
-  @IsUUID('4', { message: 'El ID del aprobador debe ser un UUID válido' })
-  @IsOptional()
-  aprobado_por?: string;
+  // 🔥 NUEVA PROPIEDAD: Valida la justificación obligatoria enviada por el Supervisor
+  @IsString({ message: 'El motivo debe ser una cadena de texto' })
+  @IsNotEmpty({ message: 'El motivo es requerido' })
+  @MinLength(10, { message: 'El motivo debe tener al menos 10 caracteres' })
+  motivo!: string;
+  // ✨ AHORA ES OBLIGATORIO: Almacena directamente qué supervisor creó el registro
+  @IsUUID('4', { message: 'El ID del supervisor debe ser un UUID válido' })
+  @IsNotEmpty()
+  aprobado_por!: string;
 }

@@ -42,4 +42,11 @@ export class IncidenciasController {
   remove(@Param('id') id: string) {
     return this.incidenciasService.remove(id);
   }
+  @Get('sucursal/:tenantId/:sucursalId')
+  findBySucursal(
+    @Param('tenantId') tenantId: string,
+    @Param('sucursalId') sucursalId: string,
+  ) {
+    return this.incidenciasService.findBySucursal(tenantId, sucursalId);
+  }
 }

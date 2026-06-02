@@ -1,5 +1,6 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
+import { NominaDetalle } from 'src/nomina-detalle/entities/nomina-detalle.entity';
 
 export enum EstatusNomina {
   BORRADOR = 'BORRADOR',
@@ -35,4 +36,7 @@ export class Nomina {
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'tenant_id' })
   empresa!: Empresa;
+  // 🔥 VÍNCULO DE ORO: Mapea el desglose automático por empleados
+  @OneToMany(() => NominaDetalle, (detalle) => detalle.nomina)
+  detalles!: NominaDetalle[];
 }

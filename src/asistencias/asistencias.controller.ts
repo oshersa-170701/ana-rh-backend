@@ -50,4 +50,11 @@ export class AsistenciasController {
       checkAsistenciaDto,
     );
   }
+  @Get('sucursal/:tenantId/:sucursalId')
+  findBySucursal(
+    @Param('tenantId') tenantId: string,
+    @Param('sucursalId') sucursalId: string,
+  ) {
+    return this.asistenciasService.findBySucursal(tenantId, sucursalId);
+  }
 }

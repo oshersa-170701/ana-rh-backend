@@ -44,15 +44,17 @@ export class Incidencia {
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   cantidad_horas!: number;
-
+  // 🔥 NUEVA COLUMNA: Mapea la justificación con la base de datos
+  @Column({ type: 'text', nullable: true })
+  motivo!: string;
   @Column({
     type: 'enum',
     enum: EstatusIncidencia,
-    default: EstatusIncidencia.PENDIENTE,
+    default: EstatusIncidencia.APROBADO, // 🔥 PARCHE DE ORO: Entra aprobada por defecto
   })
   estatus!: EstatusIncidencia;
 
-  @Column({ type: 'varchar', length: 36, nullable: true })
+  @Column({ type: 'varchar', length: 36, nullable: false }) // ✨ Ya no es nullable
   aprobado_por!: string;
 
   @CreateDateColumn({ type: 'timestamp' })
@@ -67,7 +69,8 @@ export class Incidencia {
   @JoinColumn({ name: 'empleado_id' })
   empleado!: Empleado;
 
-  @ManyToOne(() => Usuario)
+  // ✅ POR ESTO (Para que acepte IDs de la tabla empleados):
+  @ManyToOne(() => Empleado)
   @JoinColumn({ name: 'aprobado_por' })
-  aprobador!: Usuario;
+  aprobador!: Empleado;
 }

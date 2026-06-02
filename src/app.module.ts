@@ -11,6 +11,11 @@ import { AsistenciasModule } from './asistencias/asistencias.module';
 import { IncidenciasModule } from './incidencias/incidencias.module';
 import { NominasModule } from './nominas/nominas.module';
 
+// 🔥 IMPORTACIONES CRUCIALES PARA ROMPER EL CICLO DE METADATOS
+import { Nomina } from './nominas/entities/nomina.entity';
+import { NominaDetalle } from './nomina-detalle/entities/nomina-detalle.entity';
+
+
 @Module({
   imports: [
     // 1. Inicializamos las variables de entorno para que estén disponibles en todo el proyecto
@@ -26,7 +31,11 @@ import { NominasModule } from './nominas/nominas.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
-      autoLoadEntities: true, // Esto cargará nuestras entidades automáticamente después
+      
+      // ✨ PARCHE DE ACERO: Forzamos el registro manual de las entidades vinculadas
+      entities: [Nomina, NominaDetalle], 
+      
+      autoLoadEntities: true, // Sigue cargando automáticamente las demás (Asistencia, Empleado, etc.)
       synchronize: false, // ¡Muy importante en false! Porque ya creamos nuestras tablas con el script SQL
     }),
 
@@ -42,10 +51,7 @@ import { NominasModule } from './nominas/nominas.module';
 
     IncidenciasModule,
 
-    NominasModule,
-
-  
-    EmpleadosModule,
+    NominasModule, // 🧠 Ahora cuando entre aquí, ya conocerá los metadatos de ambos de antemano
   ],
   controllers: [AppController],
   providers: [AppService],
