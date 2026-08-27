@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  deepface-api:
+    image: serengil/deepface
+    container_name: deepface-api
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
